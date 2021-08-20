@@ -63,6 +63,7 @@ int main(int, char**) {
 	cv::Mat male = cv::imread("C:\\Users\\nstrothoff\\Desktop\\openCV\\img\\testm.jpg", -1);
 	cv::Mat female = cv::imread("C:\\Users\\nstrothoff\\Desktop\\openCV\\img\\testf.jpg", -1);
 	cv::Mat twoM = cv::imread("C:\\Users\\nstrothoff\\Desktop\\openCV\\img\\twoM.jpg", -1);
+	//FACEDETECT 2.get dimensions of the images
 	int mHeight = male.rows;
 	int mWidth = male.cols;
 	int fHeight = female.rows;
@@ -70,30 +71,16 @@ int main(int, char**) {
 	int TMHeight = twoM.rows;
 	int TMWidth = twoM.cols;
 
-	//IMAGE 2. resize imgs and create blob from image
-	//blobFromImage(): image need preprocessing before classification which are mean subtraction and scaling by factor
-	//mean subtraction needed to handle illunination(lighting) changes on the subject
-	//scaling is normalizing the subtraction 
-	//blobFromImage(img, scalingfactor, size, mean, swapRB);
-	//img = input, scalingfactor = normalization, size = spatial size that CNN expects (224x224, 227x227, 229x229
-	//mean = subtraction value either single value or 3-tuple supplied as (R,G,B)
-	//swapRB = swaps from BGR openCV standard to RGB for CNN
-	//blobFromImages(); for multiple images and video
-	/*cv::Mat mSmall;
-	cv::resize(male, mSmall, cv::Size(300, 300));
-	cv::Mat fSmall;
-	cv::resize(female, fSmall, cv::Size(300, 300));*/
+	//FACEDETECT 3. create blobs(preprocess) from images
 	cv::Mat mBlob = cv::dnn::blobFromImage(male, 1.0, cv::Size(300, 300), cv::Scalar(104.0, 177.0, 123.0));
 	cv::Mat fBlob = cv::dnn::blobFromImage(female, 1.0, cv::Size(300, 300), cv::Scalar(104.0, 177.0, 123.0));
 	cv::Mat TMBlob = cv::dnn::blobFromImage(twoM, 1.0, cv::Size(300, 300), cv::Scalar(104.0, 177.0, 123.0));
 
-	//FACEDETECT 2. run male img through the CNN
-	//faceDetectNet.setInput(mBlob);
-	faceDetectNet.setInput(TMBlob);
-
+	//FACEDETECT 4. give the blob to the CNN and run the CNN, save info 200x7 array in Mat
+	faceDetectNet.setInput(mBlob);
 	cv::Mat faceDetectResult;
 	faceDetectNet.forward(faceDetectResult);
-	
+	//FACEDETECT 5. Extract the content form the first Mat and read it into a second so its easily accessable
 	cv::Mat facesData(faceDetectResult.size[2], faceDetectResult.size[3], CV_32F, faceDetectResult.ptr<float>());
 
 	/*std::cout << "     img_id     " << "is_face     " << "confidence     " << "left     " << "top     " << "right     " << "bottom     " << std::endl;
@@ -104,28 +91,29 @@ int main(int, char**) {
 		}
 		std::cout << std::endl;
 	}*/
+	
 	float confidence;
-
+	//FACEDETECT 6. create vector of int vector to store the rectangles around the faces
 	std::vector<std::vector<int>> faceRects;
-
+	//FACEDETECT 7. for every face get create a rectangle around it and store the position of the rectangle
 	for (int i = 0; i < facesData.rows; i++) {
+		//get and check the probability that there is a face
 		confidence = facesData.at<float>(i, 2);
-		
 		if (confidence < 0.9) { continue; }
 
-		int x1 = static_cast<int>(facesData.at<float>(i, 3) * TMWidth);
-		int y1 = static_cast<int>(facesData.at<float>(i, 4) * TMHeight);
-		int x2 = static_cast<int>(facesData.at<float>(i, 5) * TMWidth);
-		int y2 = static_cast<int>(facesData.at<float>(i,6) * TMHeight);
-
+		//get the position left/right/top/bottom of rect in downscaled img and multiply it by the real img size
+		int x1 = static_cast<int>(facesData.at<float>(i, 3) * TMWidth);//left
+		int y1 = static_cast<int>(facesData.at<float>(i, 4) * TMHeight);//top
+		int x2 = static_cast<int>(facesData.at<float>(i, 5) * TMWidth);//right
+		int y2 = static_cast<int>(facesData.at<float>(i,6) * TMHeight);//bottom
+		
+		//save rectangle into vector and draw into onto original img
 		std::vector<int> box = { x1,y1,x2,y2 };
 		faceRects.push_back(box);
-
 		cv::rectangle(twoM, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0, 255, 0), 2, 4);
 	}
 
 	cv::imshow("pic", twoM);
-
 
 	cv::waitKey(0);
 
@@ -141,6 +129,61 @@ int main(int, char**) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	//blobFromImage(): image need preprocessing before classification which are mean subtraction and scaling by factor
+	//mean subtraction needed to handle illunination(lighting) changes on the subject
+	//scaling is normalizing the subtraction 
+	//blobFromImage(img, scalingfactor, size, mean, swapRB);
+	//img = input, scalingfactor = normalization, size = spatial size that CNN expects (224x224, 227x227, 229x229
+	//mean = subtraction value either single value or 3-tuple supplied as (R,G,B)
+	//swapRB = swaps from BGR openCV standard to RGB for CNN
+	//blobFromImages(); for multiple images and video
 
 
 
