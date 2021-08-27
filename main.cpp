@@ -65,8 +65,17 @@ int main(int, char**) {
 	cv::dnn::Net genderNet = cv::dnn::readNetFromCaffe(genderProtoPath, genderCoffePath);
 	cv::dnn::Net ageNet = cv::dnn::readNetFromCaffe(ageProtoPath, ageCoffePath);
 
+	////RUN ON GPU
+	//ageNet.setPreferableBackend(cv::DNN_BACKEND_CUDA);
+	//ageNet.setPreferableTarget(cv::DNN_TARGET_CUDA);
+	//
+	//genderNet.setPreferableBackend(cv::DNN_BACKEND_CUDA);
+	//genderNet.setPreferableTarget(cv::DNN_TARGET_CUDA);
+	//
+	//faceDetectNet.setPreferableBackend(cv::DNN_BACKEND_CUDA);
+	//faceDetectNet.setPreferableTarget(cv::DNN_TARGET_CUDA);
 	//LOAD IMG
-	//cv::Mat img = cv::imread("C:\\Users\\nstrothoff\\Desktop\\openCV\\img\\fwomen.jpg", 1);
+	//cv::Mat img = cv::imread("C:\\Users\\nstrothoff\\Desktop\\openCV\\img\\testf.jpg", 1);
 
 	//CREATE CAMERA AND START IT UP
 	cv::VideoCapture cap(0);
@@ -76,6 +85,10 @@ int main(int, char**) {
 	}
 	if (cap.isOpened()) {
 		std::cout << "Camera open!!";
+		cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
+		cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+		//cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+		cap.set(cv::CAP_PROP_FPS, 30);
 	}
 
 	//FACEDETECTION 3. vector of vectors to store face boxes coordinates
@@ -85,6 +98,7 @@ int main(int, char**) {
 		cv::Mat img;
 		//read a new frame from camera and store it into frame
 		cap.read(img);
+		
 		//check if frame exists
 		if (img.empty()) {
 			std::cout << "ERR frame empty";
@@ -100,7 +114,16 @@ int main(int, char**) {
 		int i = 0;
 		for (auto it : faceBoxes) {
 			//GENDERDETECTION 5. cut out all faces
-			cv::Rect ROI(cv::Point(faceBoxes[i][0] - 15, faceBoxes[i][1] - 15), cv::Point(faceBoxes[i][2] + 15, faceBoxes[i][3] + 15));
+			//CHECK IF POINTS ARE INSDE IMAGE IF NOT CONTINUE
+			cv::Point leftUp(faceBoxes[i][0]-15, faceBoxes[i][1]-15);
+			cv::Point rightDown(faceBoxes[i][2]+15, faceBoxes[i][3]+15);
+
+			if (leftUp.x < 0 || leftUp.y < 0 || rightDown.x > img.cols || rightDown.y > img.rows) {
+				std::cout << "Face too big or too not centered enough. Please adjust!!!" << std::endl;
+				continue;
+			}
+			
+			cv::Rect ROI(leftUp, rightDown);
 			cv::Mat face = img(ROI);
 
 			//GENDERDETECTION 6. make blob of face
@@ -111,7 +134,7 @@ int main(int, char**) {
 			genderNet.setInput(Blob);
 			std::vector<float> genderProb = genderNet.forward();
 			//GENDERDETECTION 8. find max probability of result
-			int maxProbGender = std::max_element(genderProb.begin(), genderProb.end()) - genderProb.begin();;
+			size_t maxProbGender = std::max_element(genderProb.begin(), genderProb.end()) - genderProb.begin();
 			std::string gender = genderList[maxProbGender];
 
 			//agedetection 4. input blob into network and get result
@@ -122,7 +145,7 @@ int main(int, char**) {
 			std::string age = ageList[maxPobage];
 
 
-			std::cout << "gender: " << gender << std::endl;
+			std::cout << "Gender: " << gender << ", Age: " << age << std::endl;
 
 			std::string boxLabel = gender + ", " + age;
 			cv::putText(faceCopy, boxLabel, cv::Point(faceBoxes[i][0], faceBoxes[i][1] - 10), cv::FONT_HERSHEY_SIMPLEX, 0.9, cv::Scalar(0, 255, 255), 2, cv::LINE_AA);
